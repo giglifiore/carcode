@@ -6,7 +6,6 @@
 
 <script src="p5.min.js"></script>
 
-<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -60,6 +59,12 @@ background:#000;
 padding:10px;
 }
 
+#leaderboard{
+background:#000;
+padding:10px;
+margin-top:10px;
+}
+
 </style>
 
 </head>
@@ -86,7 +91,11 @@ padding:10px;
 
 <button onclick="loadBuilds()">Load Community Builds</button>
 
+<button onclick="raceCommunity()">🏁 Race Community</button>
+
 <div id="builds"></div>
+
+<div id="leaderboard"></div>
 
 <div id="stats"></div>
 
@@ -95,16 +104,13 @@ padding:10px;
 <script>
 
 /////////////////////
-// FIREBASE CONFIG
+// FIREBASE
 /////////////////////
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCOHwfHnIJOrnqlNHsAlMH9MI3Hx7M7wcw",
-  authDomain: "carcode-58d5d.firebaseapp.com",
-  projectId: "carcode-58d5d",
-  storageBucket: "carcode-58d5d.appspot.com",
-  messagingSenderId: "1034810624105",
-  appId: "1:1034810624105:web:4e960e4864ee332e63baf8"
+apiKey: "PASTE_KEY",
+authDomain: "PASTE_DOMAIN",
+projectId: "PASTE_PROJECT"
 };
 
 firebase.initializeApp(firebaseConfig)
@@ -116,14 +122,14 @@ let currentUser=null
 
 function login(){
 
-const provider = new firebase.auth.GoogleAuthProvider()
+const provider=new firebase.auth.GoogleAuthProvider()
 
 auth.signInWithPopup(provider)
-.then(result=>{
+.then(res=>{
 
-currentUser=result.user
+currentUser=res.user
 
-document.getElementById("user").innerText =
+document.getElementById("user").innerText=
 "Player: "+currentUser.displayName
 
 })
@@ -183,9 +189,7 @@ code:`speed += torque * grip * 0.01`
 ]
 
 function setup(){
-
 createCanvas(window.innerWidth,window.innerHeight)
-
 }
 
 function draw(){
@@ -240,17 +244,13 @@ document.getElementById("code").value=p.code
 function saveCode(){
 
 if(selectedPart){
-
 selectedPart.code=document.getElementById("code").value
-
 }
 
 }
 
 function toggleSim(){
-
 running=!running
-
 }
 
 function simulate(){
@@ -279,34 +279,31 @@ car.air=air
 car.torque=torque
 car.speed=speed
 
-}catch(e){
-console.log(e)
-}
+}catch(e){}
 
 }
 
 car.speed*=0.99
-
 car.rpm=900 + car.speed*45
 
 }
 
 function drawStats(){
 
-let s=`
+document.getElementById("stats").innerHTML=`
+
 RPM: ${car.rpm.toFixed(0)}<br>
 Speed: ${car.speed.toFixed(2)}<br>
 Boost: ${car.boost.toFixed(2)}<br>
 Air: ${car.air.toFixed(2)}<br>
 Torque: ${car.torque.toFixed(2)}
-`
 
-document.getElementById("stats").innerHTML=s
+`
 
 }
 
 /////////////////////
-// COMMUNITY
+// COMMUNITY BUILDS
 /////////////////////
 
 async function uploadBuild(){
@@ -321,8 +318,6 @@ turbo:parts[0].code,
 engine:parts[1].code,
 wheels:parts[2].code,
 
-rpm:car.rpm
-
 })
 
 alert("Build Shared!")
@@ -331,7 +326,7 @@ alert("Build Shared!")
 
 async function loadBuilds(){
 
-let snap = await db.collection("builds").get()
+let snap=await db.collection("builds").get()
 
 let html=""
 
@@ -341,7 +336,7 @@ let b=doc.data()
 
 html+=`
 <button onclick='applyBuild(${JSON.stringify(b)})'>
-${b.user} - ${Math.floor(b.rpm)} RPM
+${b.user}
 </button>
 `
 
@@ -358,6 +353,101 @@ parts[1].code=b.engine
 parts[2].code=b.wheels
 
 alert("Build Loaded")
+
+}
+
+/////////////////////
+// RACE SYSTEM
+/////////////////////
+
+function simulateBuild(build){
+
+let simCar={
+rpm:900,
+speed:0,
+boost:0,
+air:1,
+fuel:1,
+torque:0
+}
+
+let simParts=[
+{code:build.turbo,power:5},
+{code:build.engine,power:10},
+{code:build.wheels,grip:1.2}
+]
+
+for(let t=0;t<500;t++){
+
+simCar.boost=0
+simCar.air=1
+simCar.torque=0
+
+for(let p of simParts){
+
+try{
+
+let rpm=simCar.rpm
+let boost=simCar.boost
+let air=simCar.air
+let fuel=simCar.fuel
+let torque=simCar.torque
+let speed=simCar.speed
+let power=p.power||0
+let grip=p.grip||1
+
+eval(p.code)
+
+simCar.boost=boost
+simCar.air=air
+simCar.torque=torque
+simCar.speed=speed
+
+}catch(e){}
+
+}
+
+simCar.speed*=0.99
+simCar.rpm=900 + simCar.speed*45
+
+}
+
+return simCar.speed
+
+}
+
+async function raceCommunity(){
+
+let snap=await db.collection("builds").get()
+
+let results=[]
+
+snap.forEach(doc=>{
+
+let b=doc.data()
+
+let score=simulateBuild(b)
+
+results.push({
+user:b.user,
+speed:score
+})
+
+})
+
+results.sort((a,b)=>b.speed-a.speed)
+
+let html="<h3>🏁 Race Results</h3>"
+
+results.forEach((r,i)=>{
+
+html+=`
+${i+1}. ${r.user} - ${r.speed.toFixed(2)} km/h<br>
+`
+
+})
+
+document.getElementById("leaderboard").innerHTML=html
 
 }
 
