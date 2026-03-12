@@ -78,8 +78,7 @@ margin-top:10px;
 
 if(scan("resource")){
   mine()
-}
-else{
+}else{
   moveRandom()
 }
 
@@ -139,6 +138,7 @@ const tile=20
 
 let robots=[]
 let resources=[]
+let selectedRobot=null
 
 function setup(){
 
@@ -284,11 +284,6 @@ r.amount-=1
 
 function simulateRobot(robot){
 
-let moveNorth=()=>move(robot,0,-1)
-let moveSouth=()=>move(robot,0,1)
-let moveEast=()=>move(robot,1,0)
-let moveWest=()=>move(robot,-1,0)
-
 let moveRandomFn=()=>moveRandom(robot)
 let mineFn=()=>mine(robot)
 let scanFn=(t)=>scan(robot,t)
@@ -297,10 +292,6 @@ try{
 
 const func=new Function(
 
-"moveNorth",
-"moveSouth",
-"moveEast",
-"moveWest",
 "moveRandom",
 "mine",
 "scan",
@@ -311,10 +302,6 @@ robot.code
 
 func(
 
-moveNorth,
-moveSouth,
-moveEast,
-moveWest,
 moveRandomFn,
 mineFn,
 scanFn
@@ -322,6 +309,33 @@ scanFn
 )
 
 }catch(e){
+
+}
+
+}
+
+//////////////////////
+// CLICK ROBOT
+//////////////////////
+
+function mousePressed(){
+
+let gx=floor(mouseX/tile)
+let gy=floor(mouseY/tile)
+
+for(let r of robots){
+
+if(r.x==gx && r.y==gy){
+
+selectedRobot=r
+
+if(r.owner==currentUser?.uid){
+
+document.getElementById("code").value=r.code
+
+}
+
+}
 
 }
 
@@ -374,7 +388,6 @@ fill("green")
 for(let r of resources){
 
 if(r.amount>0)
-
 rect(r.x*tile,r.y*tile,tile,tile)
 
 }
@@ -386,16 +399,21 @@ function drawRobots(){
 for(let robot of robots){
 
 if(robot.owner==currentUser?.uid){
-
 fill("cyan")
-
 }else{
-
 fill("red")
-
 }
 
 rect(robot.x*tile,robot.y*tile,tile,tile)
+
+if(selectedRobot && robot.id==selectedRobot.id){
+
+stroke("yellow")
+noFill()
+rect(robot.x*tile,robot.y*tile,tile,tile)
+noStroke()
+
+}
 
 }
 
@@ -436,17 +454,31 @@ let myRobots=robots.filter(r=>r.owner==currentUser?.uid)
 let totalResources=0
 
 for(let r of myRobots){
-
 totalResources+=r.resources
-
 }
 
-document.getElementById("stats").innerHTML=`
+let html=`
 
 Robots: ${myRobots.length}<br>
 Resources: ${totalResources}
 
 `
+
+if(selectedRobot){
+
+html+=`
+
+<br><br>
+Selected Robot<br>
+Owner: ${selectedRobot.name}<br>
+Energy: ${selectedRobot.energy}<br>
+Resources: ${selectedRobot.resources}
+
+`
+
+}
+
+document.getElementById("stats").innerHTML=html
 
 }
 
@@ -456,7 +488,33 @@ Resources: ${totalResources}
 
 function saveCode(){
 
-alert("Code saved locally")
+if(!selectedRobot){
+
+alert("Select a robot")
+
+return
+
+}
+
+if(selectedRobot.owner!=currentUser?.uid){
+
+alert("Not your robot")
+
+return
+
+}
+
+let newCode=document.getElementById("code").value
+
+db.collection("robots")
+.doc(selectedRobot.id)
+.update({
+code:newCode
+})
+
+selectedRobot.code=newCode
+
+alert("Code Updated")
 
 }
 
