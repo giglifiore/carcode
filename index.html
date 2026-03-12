@@ -2,9 +2,9 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Car Programming Online</title>
+<title>CodeWorld</title>
 
-<script src="p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.3/p5.min.js"></script>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -13,10 +13,10 @@
 <style>
 
 body{
+margin:0;
+font-family:Arial;
 background:#111;
 color:white;
-font-family:Arial;
-margin:0;
 overflow:hidden;
 }
 
@@ -33,7 +33,7 @@ overflow:auto;
 
 textarea{
 width:100%;
-height:140px;
+height:180px;
 background:black;
 color:#00ff88;
 font-family:monospace;
@@ -44,8 +44,8 @@ width:100%;
 padding:8px;
 margin-top:6px;
 background:#333;
-color:white;
 border:none;
+color:white;
 cursor:pointer;
 }
 
@@ -54,48 +54,40 @@ background:#555;
 }
 
 #stats{
-margin-top:10px;
-background:#000;
-padding:10px;
-}
-
-#leaderboard{
 background:#000;
 padding:10px;
 margin-top:10px;
 }
 
 </style>
-
 </head>
 
 <body>
 
 <div id="panel">
 
-<h2>Car Programming Online</h2>
+<h2>🌍 CodeWorld</h2>
 
 <div id="user">Not logged</div>
 
 <button onclick="login()">Login Google</button>
 
-<h3 id="partTitle">Select Part</h3>
+<h3>Robot Code</h3>
 
-<textarea id="code"></textarea>
+<textarea id="code">
+
+if(scan("resource")){
+  mine()
+}
+else{
+  moveRandom()
+}
+
+</textarea>
 
 <button onclick="saveCode()">Save Code</button>
 
-<button onclick="toggleSim()">Start Simulation</button>
-
-<button onclick="uploadBuild()">Share Build</button>
-
-<button onclick="loadBuilds()">Load Community Builds</button>
-
-<button onclick="raceCommunity()">🏁 Race Community</button>
-
-<div id="builds"></div>
-
-<div id="leaderboard"></div>
+<button onclick="spawnRobot()">Spawn Robot</button>
 
 <div id="stats"></div>
 
@@ -103,9 +95,9 @@ margin-top:10px;
 
 <script>
 
-/////////////////////
+//////////////////////
 // FIREBASE
-/////////////////////
+//////////////////////
 
 const firebaseConfig = {
   apiKey: "AIzaSyCOHwfHnIJOrnqlNHsAlMH9MI3Hx7M7wcw",
@@ -118,8 +110,8 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig)
 
-const auth = firebase.auth()
-const db = firebase.firestore()
+const auth=firebase.auth()
+const db=firebase.firestore()
 
 let currentUser=null
 
@@ -127,8 +119,7 @@ function login(){
 
 const provider=new firebase.auth.GoogleAuthProvider()
 
-auth.signInWithPopup(provider)
-.then(res=>{
+auth.signInWithPopup(provider).then(res=>{
 
 currentUser=res.user
 
@@ -139,104 +130,234 @@ document.getElementById("user").innerText=
 
 }
 
-/////////////////////
-// GAME ENGINE
-/////////////////////
+//////////////////////
+// WORLD
+//////////////////////
 
-let running=false
-let selectedPart=null
+const gridSize=40
+const tile=20
 
-let car={
-rpm:900,
-speed:0,
-boost:0,
-air:1,
-fuel:1,
-torque:0
-}
-
-let parts=[
-
-{
-name:"Turbo",
-x:230,
-y:200,
-w:60,
-h:40,
-power:5,
-code:`boost += power * 0.05
-if(rpm > 3000){ boost += 0.5 }
-air += boost * 0.5`
-},
-
-{
-name:"Engine",
-x:310,
-y:210,
-w:80,
-h:50,
-power:10,
-code:`torque += power * fuel * air * 5`
-},
-
-{
-name:"Wheels",
-x:450,
-y:260,
-w:80,
-h:40,
-grip:1.2,
-code:`speed += torque * grip * 0.01`
-}
-
-]
+let robots=[]
+let resources=[]
 
 function setup(){
-createCanvas(window.innerWidth,window.innerHeight)
+
+createCanvas(window.innerWidth-360,window.innerHeight)
+
+generateResources()
+
+loadRobots()
+
 }
+
+//////////////////////
+// RESOURCES
+//////////////////////
+
+function generateResources(){
+
+for(let i=0;i<200;i++){
+
+resources.push({
+
+x:floor(random(gridSize)),
+y:floor(random(gridSize)),
+amount:100
+
+})
+
+}
+
+}
+
+//////////////////////
+// ROBOTS
+//////////////////////
+
+function spawnRobot(){
+
+if(!currentUser)return alert("login first")
+
+const code=document.getElementById("code").value
+
+const robot={
+
+owner:currentUser.uid,
+name:currentUser.displayName,
+
+x:floor(random(gridSize)),
+y:floor(random(gridSize)),
+
+energy:100,
+hp:100,
+resources:0,
+
+code:code
+
+}
+
+db.collection("robots").add(robot)
+
+}
+
+function loadRobots(){
+
+db.collection("robots").onSnapshot(snap=>{
+
+robots=[]
+
+snap.forEach(doc=>{
+
+robots.push({...doc.data(),id:doc.id})
+
+})
+
+})
+
+}
+
+//////////////////////
+// ROBOT ACTIONS
+//////////////////////
+
+function move(robot,dx,dy){
+
+robot.x+=dx
+robot.y+=dy
+
+robot.x=constrain(robot.x,0,gridSize-1)
+robot.y=constrain(robot.y,0,gridSize-1)
+
+}
+
+function moveRandom(robot){
+
+let d=floor(random(4))
+
+if(d==0)move(robot,1,0)
+if(d==1)move(robot,-1,0)
+if(d==2)move(robot,0,1)
+if(d==3)move(robot,0,-1)
+
+}
+
+function scan(robot,type){
+
+if(type=="resource"){
+
+for(let r of resources){
+
+if(r.x==robot.x && r.y==robot.y){
+return true
+}
+
+}
+
+}
+
+return false
+
+}
+
+function mine(robot){
+
+for(let r of resources){
+
+if(r.x==robot.x && r.y==robot.y){
+
+if(r.amount>0){
+
+robot.resources+=1
+r.amount-=1
+
+}
+
+}
+
+}
+
+}
+
+//////////////////////
+// SIMULATION
+//////////////////////
+
+function simulateRobot(robot){
+
+let moveNorth=()=>move(robot,0,-1)
+let moveSouth=()=>move(robot,0,1)
+let moveEast=()=>move(robot,1,0)
+let moveWest=()=>move(robot,-1,0)
+
+let moveRandomFn=()=>moveRandom(robot)
+let mineFn=()=>mine(robot)
+let scanFn=(t)=>scan(robot,t)
+
+try{
+
+const func=new Function(
+
+"moveNorth",
+"moveSouth",
+"moveEast",
+"moveWest",
+"moveRandom",
+"mine",
+"scan",
+
+robot.code
+
+)
+
+func(
+
+moveNorth,
+moveSouth,
+moveEast,
+moveWest,
+moveRandomFn,
+mineFn,
+scanFn
+
+)
+
+}catch(e){
+
+}
+
+}
+
+//////////////////////
+// DRAW
+//////////////////////
 
 function draw(){
 
 background(20)
 
-drawCar()
+drawGrid()
 
-if(running){
-simulate()
-}
+drawResources()
 
-drawStats()
+drawRobots()
 
-}
+if(frameCount%30==0){
 
-function drawCar(){
-
-fill(80)
-rect(200,240,350,60)
-
-for(let p of parts){
-
-fill(120)
-rect(p.x,p.y,p.w,p.h)
-
-fill(255)
-text(p.name,p.x+5,p.y+20)
+updateWorld()
 
 }
 
 }
 
-function mousePressed(){
+function drawGrid(){
 
-for(let p of parts){
+stroke(40)
 
-if(mouseX>p.x && mouseX<p.x+p.w &&
-mouseY>p.y && mouseY<p.y+p.h){
+for(let x=0;x<gridSize;x++){
 
-selectedPart=p
+for(let y=0;y<gridSize;y++){
 
-document.getElementById("partTitle").innerText=p.name
-document.getElementById("code").value=p.code
+rect(x*tile,y*tile,tile,tile)
 
 }
 
@@ -244,213 +365,98 @@ document.getElementById("code").value=p.code
 
 }
 
-function saveCode(){
+function drawResources(){
 
-if(selectedPart){
-selectedPart.code=document.getElementById("code").value
+noStroke()
+
+fill("green")
+
+for(let r of resources){
+
+if(r.amount>0)
+
+rect(r.x*tile,r.y*tile,tile,tile)
+
+}
+
+}
+
+function drawRobots(){
+
+for(let robot of robots){
+
+if(robot.owner==currentUser?.uid){
+
+fill("cyan")
+
+}else{
+
+fill("red")
+
+}
+
+rect(robot.x*tile,robot.y*tile,tile,tile)
+
 }
 
 }
 
-function toggleSim(){
-running=!running
-}
+//////////////////////
+// UPDATE WORLD
+//////////////////////
 
-function simulate(){
+function updateWorld(){
 
-car.boost=0
-car.air=1
-car.torque=0
+for(let robot of robots){
 
-for(let p of parts){
+simulateRobot(robot)
 
-try{
+db.collection("robots").doc(robot.id).update({
 
-let rpm=car.rpm
-let boost=car.boost
-let air=car.air
-let fuel=car.fuel
-let torque=car.torque
-let speed=car.speed
-let power=p.power||0
-let grip=p.grip||1
+x:robot.x,
+y:robot.y,
+resources:robot.resources
 
-eval(p.code)
-
-car.boost=boost
-car.air=air
-car.torque=torque
-car.speed=speed
-
-}catch(e){}
+})
 
 }
 
-car.speed*=0.99
-car.rpm=900 + car.speed*45
+updateStats()
 
 }
 
-function drawStats(){
+//////////////////////
+// STATS
+//////////////////////
+
+function updateStats(){
+
+let myRobots=robots.filter(r=>r.owner==currentUser?.uid)
+
+let totalResources=0
+
+for(let r of myRobots){
+
+totalResources+=r.resources
+
+}
 
 document.getElementById("stats").innerHTML=`
 
-RPM: ${car.rpm.toFixed(0)}<br>
-Speed: ${car.speed.toFixed(2)}<br>
-Boost: ${car.boost.toFixed(2)}<br>
-Air: ${car.air.toFixed(2)}<br>
-Torque: ${car.torque.toFixed(2)}
+Robots: ${myRobots.length}<br>
+Resources: ${totalResources}
 
 `
 
 }
 
-/////////////////////
-// COMMUNITY BUILDS
-/////////////////////
+//////////////////////
+// SAVE CODE
+//////////////////////
 
-async function uploadBuild(){
+function saveCode(){
 
-if(!currentUser) return alert("Login first")
-
-await db.collection("builds").add({
-
-user:currentUser.displayName,
-
-turbo:parts[0].code,
-engine:parts[1].code,
-wheels:parts[2].code,
-
-})
-
-alert("Build Shared!")
-
-}
-
-async function loadBuilds(){
-
-let snap=await db.collection("builds").get()
-
-let html=""
-
-snap.forEach(doc=>{
-
-let b=doc.data()
-
-html+=`
-<button onclick='applyBuild(${JSON.stringify(b)})'>
-${b.user}
-</button>
-`
-
-})
-
-document.getElementById("builds").innerHTML=html
-
-}
-
-function applyBuild(b){
-
-parts[0].code=b.turbo
-parts[1].code=b.engine
-parts[2].code=b.wheels
-
-alert("Build Loaded")
-
-}
-
-/////////////////////
-// RACE SYSTEM
-/////////////////////
-
-function simulateBuild(build){
-
-let simCar={
-rpm:900,
-speed:0,
-boost:0,
-air:1,
-fuel:1,
-torque:0
-}
-
-let simParts=[
-{code:build.turbo,power:5},
-{code:build.engine,power:10},
-{code:build.wheels,grip:1.2}
-]
-
-for(let t=0;t<500;t++){
-
-simCar.boost=0
-simCar.air=1
-simCar.torque=0
-
-for(let p of simParts){
-
-try{
-
-let rpm=simCar.rpm
-let boost=simCar.boost
-let air=simCar.air
-let fuel=simCar.fuel
-let torque=simCar.torque
-let speed=simCar.speed
-let power=p.power||0
-let grip=p.grip||1
-
-eval(p.code)
-
-simCar.boost=boost
-simCar.air=air
-simCar.torque=torque
-simCar.speed=speed
-
-}catch(e){}
-
-}
-
-simCar.speed*=0.99
-simCar.rpm=900 + simCar.speed*45
-
-}
-
-return simCar.speed
-
-}
-
-async function raceCommunity(){
-
-let snap=await db.collection("builds").get()
-
-let results=[]
-
-snap.forEach(doc=>{
-
-let b=doc.data()
-
-let score=simulateBuild(b)
-
-results.push({
-user:b.user,
-speed:score
-})
-
-})
-
-results.sort((a,b)=>b.speed-a.speed)
-
-let html="<h3>🏁 Race Results</h3>"
-
-results.forEach((r,i)=>{
-
-html+=`
-${i+1}. ${r.user} - ${r.speed.toFixed(2)} km/h<br>
-`
-
-})
-
-document.getElementById("leaderboard").innerHTML=html
+alert("Code saved locally")
 
 }
 
