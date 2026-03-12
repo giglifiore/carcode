@@ -53,6 +53,12 @@ button:hover{
 background:#555;
 }
 
+.robotItem{
+background:#222;
+padding:10px;
+margin-bottom:8px;
+}
+
 #stats{
 background:#000;
 padding:10px;
@@ -72,6 +78,11 @@ margin-top:10px;
 
 <button onclick="login()">Login Google</button>
 
+<button onclick="spawnRobot()">Spawn Robot</button>
+
+<h3>My Robots</h3>
+<div id="robotList"></div>
+
 <h3>Robot Code</h3>
 
 <textarea id="code">
@@ -86,17 +97,15 @@ if(scan("resource")){
 
 <button onclick="saveCode()">Save Code</button>
 
-<button onclick="spawnRobot()">Spawn Robot</button>
-
 <div id="stats"></div>
 
 </div>
 
 <script>
 
-//////////////////////
+////////////////////////
 // FIREBASE
-//////////////////////
+////////////////////////
 
 const firebaseConfig = {
   apiKey: "AIzaSyCOHwfHnIJOrnqlNHsAlMH9MI3Hx7M7wcw",
@@ -114,24 +123,32 @@ const db=firebase.firestore()
 
 let currentUser=null
 
+auth.onAuthStateChanged(user=>{
+
+if(user){
+
+currentUser=user
+
+document.getElementById("user").innerText=
+"Player: "+user.displayName
+
+renderRobotList()
+
+}
+
+})
+
 function login(){
 
 const provider=new firebase.auth.GoogleAuthProvider()
 
-auth.signInWithPopup(provider).then(res=>{
-
-currentUser=res.user
-
-document.getElementById("user").innerText=
-"Player: "+currentUser.displayName
-
-})
+auth.signInWithPopup(provider)
 
 }
 
-//////////////////////
+////////////////////////
 // WORLD
-//////////////////////
+////////////////////////
 
 const gridSize=40
 const tile=20
@@ -150,9 +167,9 @@ loadRobots()
 
 }
 
-//////////////////////
+////////////////////////
 // RESOURCES
-//////////////////////
+////////////////////////
 
 function generateResources(){
 
@@ -170,9 +187,9 @@ amount:100
 
 }
 
-//////////////////////
+////////////////////////
 // ROBOTS
-//////////////////////
+////////////////////////
 
 function spawnRobot(){
 
@@ -189,7 +206,6 @@ x:floor(random(gridSize)),
 y:floor(random(gridSize)),
 
 energy:100,
-hp:100,
 resources:0,
 
 code:code
@@ -212,13 +228,73 @@ robots.push({...doc.data(),id:doc.id})
 
 })
 
+renderRobotList()
+
 })
 
 }
 
-//////////////////////
+////////////////////////
+// ROBOT LIST
+////////////////////////
+
+function renderRobotList(){
+
+if(!currentUser)return
+
+let container=document.getElementById("robotList")
+
+let myRobots=robots.filter(r=>r.owner==currentUser.uid)
+
+let html=""
+
+for(let r of myRobots){
+
+html+=`
+
+<div class="robotItem">
+
+Robot ${r.id.substring(0,5)}<br>
+Resources: ${r.resources}
+
+<br><br>
+
+<button onclick="selectRobot('${r.id}')">Edit</button>
+<button onclick="deleteRobot('${r.id}')">Delete</button>
+
+</div>
+
+`
+
+}
+
+container.innerHTML=html
+
+}
+
+function selectRobot(id){
+
+let robot=robots.find(r=>r.id==id)
+
+if(!robot)return
+
+selectedRobot=robot
+
+document.getElementById("code").value=robot.code
+
+updateStats()
+
+}
+
+function deleteRobot(id){
+
+db.collection("robots").doc(id).delete()
+
+}
+
+////////////////////////
 // ROBOT ACTIONS
-//////////////////////
+////////////////////////
 
 function move(robot,dx,dy){
 
@@ -278,9 +354,9 @@ r.amount-=1
 
 }
 
-//////////////////////
+////////////////////////
 // SIMULATION
-//////////////////////
+////////////////////////
 
 function simulateRobot(robot){
 
@@ -314,36 +390,9 @@ scanFn
 
 }
 
-//////////////////////
-// CLICK ROBOT
-//////////////////////
-
-function mousePressed(){
-
-let gx=floor(mouseX/tile)
-let gy=floor(mouseY/tile)
-
-for(let r of robots){
-
-if(r.x==gx && r.y==gy){
-
-selectedRobot=r
-
-if(r.owner==currentUser?.uid){
-
-document.getElementById("code").value=r.code
-
-}
-
-}
-
-}
-
-}
-
-//////////////////////
+////////////////////////
 // DRAW
-//////////////////////
+////////////////////////
 
 function draw(){
 
@@ -406,22 +455,13 @@ fill("red")
 
 rect(robot.x*tile,robot.y*tile,tile,tile)
 
-if(selectedRobot && robot.id==selectedRobot.id){
-
-stroke("yellow")
-noFill()
-rect(robot.x*tile,robot.y*tile,tile,tile)
-noStroke()
-
 }
 
 }
 
-}
-
-//////////////////////
+////////////////////////
 // UPDATE WORLD
-//////////////////////
+////////////////////////
 
 function updateWorld(){
 
@@ -443,9 +483,9 @@ updateStats()
 
 }
 
-//////////////////////
+////////////////////////
 // STATS
-//////////////////////
+////////////////////////
 
 function updateStats(){
 
@@ -471,7 +511,6 @@ html+=`
 <br><br>
 Selected Robot<br>
 Owner: ${selectedRobot.name}<br>
-Energy: ${selectedRobot.energy}<br>
 Resources: ${selectedRobot.resources}
 
 `
@@ -482,9 +521,9 @@ document.getElementById("stats").innerHTML=html
 
 }
 
-//////////////////////
+////////////////////////
 // SAVE CODE
-//////////////////////
+////////////////////////
 
 function saveCode(){
 
@@ -496,7 +535,7 @@ return
 
 }
 
-if(selectedRobot.owner!=currentUser?.uid){
+if(selectedRobot.owner!=currentUser.uid){
 
 alert("Not your robot")
 
