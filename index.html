@@ -52,6 +52,9 @@ if(resources>50){
 <div id="stats"></div>
 <div id="leaderboard"></div>
 </div>
+<button onclick="showGuide()">📖 Guide</button>
+<div id="guide" style="display:none; background:#222; padding:10px; margin-top:10px; max-height:200px; overflow:auto;"></div>
+<button onclick="document.getElementById('guide').style.display='none'">Close Guide</button>
 
 <script>
 
@@ -334,6 +337,45 @@ function saveCode(){
   db.collection("robots").doc(selectedRobot.id).update({ code:newCode })
   selectedRobot.code=newCode
   alert("Code Updated")
+}
+
+////////////////////////
+// GUIA
+////////////////////////
+
+function showGuide(){
+  const guideDiv = document.getElementById("guide");
+  guideDiv.style.display = "block";
+  guideDiv.innerHTML = `
+<h3>CodeWorld Guide 🌍</h3>
+<p>Welcome to CodeWorld! In this game, you program your robots to survive, gather resources, and compete with other players.</p>
+
+<b>Robot Programming</b><br>
+- Write code in the <i>Robot Code</i> textarea.<br>
+- Example actions you can use in your code:
+<ul>
+<li><b>moveRandom()</b> - Move to a random adjacent tile.</li>
+<li><b>mine()</b> - Collect resources if present on your current tile.</li>
+<li><b>scan('resource')</b> - Returns true if a resource is in your current tile.</li>
+<li><b>scanEnemy()</b> - Returns the nearest enemy robot (1 tile around).</li>
+<li><b>attack(target)</b> - Attack an enemy robot.</li>
+<li><b>spawnChild(code)</b> - Create a child robot with 50 resources.</li>
+</ul>
+
+<b>World Rules</b><br>
+- Robots have <b>energy</b> and <b>resources</b>.
+- If energy reaches 0, robots respawn at a random location with 50 energy.
+- Resources are finite and need to be mined to gain points.
+- Leaderboard shows the top robots by resources.
+
+<b>Tips</b><br>
+- Program your bot to survive and gather efficiently.
+- Avoid enemies if your energy is low.
+- You can have multiple robots and upgrade their code.
+- Experiment with conditional logic to create smarter bots!
+
+<p>Have fun coding and surviving!</p>
+  `;
 }
 
 </script>
