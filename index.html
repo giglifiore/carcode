@@ -258,6 +258,7 @@ function draw(){
   drawGrid()
   drawResources()
   drawRobots()
+  checkHoverRobot()
   if(frameCount%30==0) updateWorld()
 }
 
@@ -270,6 +271,31 @@ function drawGrid(){
   }
 }
 
+function checkHoverRobot(){
+  hoveredRobot = null;
+  for(let robot of robots){
+    let rx = robot.x * tile;
+    let ry = robot.y * tile;
+    if(mouseX > rx && mouseX < rx + tile && mouseY > ry && mouseY < ry + tile){
+      hoveredRobot = robot;
+      showRobotInfo(robot, mouseX, mouseY);
+      break;
+    }
+  }
+}
+function showRobotInfo(robot, x, y){
+  fill("white");
+  textSize(12);
+  textAlign(LEFT);
+  let info = `Owner: ${robot.name}
+Energy: ${robot.energy}
+Resources: ${robot.resources}`;
+  // Fondo semitransparente
+  fill(0,0,0,180);
+  rect(x+5, y-5, 120, 50);
+  fill("white");
+  text(info, x+10, y+10);
+}
 function drawResources(){
   noStroke()
   fill("green")
